@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Object Detection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            border-radius: 0.75rem; /* rounded-xl */
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        #video, #canvas {
+            display: block;
+        }
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        #status-box {
+            min-height: 2.5rem; /* h-10 */
+        }
+        .status-message {
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            position: absolute;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 min-h-screen flex items-center justify-center">
+
+    <div class="container mx-auto p-6 md:p-8 lg:p-12 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col items-center max-w-4xl">
+        <h1 class="text-3xl sm:text-4xl font-bold mb-4 text-center text-indigo-600 dark:text-indigo-400">
+            Real-Time Object Detection
+        </h1>
+        <p class="text-center text-gray-600 dark:text-gray-400 mb-6">
+            Powered by TensorFlow.js and Coco-SSD
+        </p>
+
+        <div class="video-container relative w-full aspect-video mb-6 bg-gray-200 dark:bg-gray-700">
+            <!-- Video element for the webcam feed -->
+            <video id="video" playsinline muted autoplay class="w-full h-full object-cover"></video>
+            <!-- Canvas for drawing bounding boxes -->
+            <canvas id="canvas" class="w-full h-full"></canvas>
+            
+            <!-- Status message box -->
+            <div id="status-box" class="flex items-center justify-center absolute inset-0">
+                <span id="status-message" class="status-message hidden">Loading model...</span>
+            </div>
+        </div>
+
+        <div class="w-full text-center">
+            <button id="startButton" class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-6 rounded-full shadow-lg transition duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50">
+                Start Webcam
+            </button>
+        </div>
+    </div>
+
+    <!-- TensorFlow.js and Coco-SSD library imports -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+    <script>
+        // Use an IIFE (Immediately Invoked Function Expression) to avoid global scope pollution
+        (function() {
+            // Get references to the HTML elements
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+            const statusMessage = document.getElementById('status-message');
+            const startButton = document.getElementById('startButton');
+
+            // Global variables
+            let model = undefined;
+            let videoStream = null;
+            let animationFrameId = null;
+
+            // Function to display status messages to the user
+            function displayStatus(message, isError = false) {
+                statusMessage.textContent = message;
+                statusMessage.classList.remove('hidden');
+                statusMessage.classList.toggle('bg-red-600', isError);
+                statusMessage.classList.toggle('bg-gray-800', !isError);
+            }
+
+            // Function to hide the status message
+            function hideStatus() {
+                statusMessage.classList.add('hidden');
+            }
+
+            // Main function to load the model and start detection
+            async function startDetection() {
+                try {
+                    // Display loading message
+                    displayStatus('Loading the Coco-SSD model...');
+
+                    // Load the pre-trained Coco-SSD model
+                    model = await cocoSsd.load();
+
+                    // Hide the status message once loaded
+                    hideStatus();
+                    
+                    // Start the webcam feed
+                    await setupWebcam();
+                    
+                    // Start the continuous detection loop
+                    detectFrame();
+                } catch (error) {
+                    // Display an error if anything goes wrong
+                    console.error('Error during model loading or webcam setup:', error);
+                    displayStatus('Failed to load the model or access the webcam.', true);
+                }
+            }
+
+            // Function to set up the webcam stream
+            async function setupWebcam() {
+                // Request access to the user's camera
+                const constraints = {
+                    video: {
+                        facingMode: "environment" // Use the back camera on mobile devices
+                    }
+                };
+                videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = videoStream;
+
+                return new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        // When the video is ready, set the canvas dimensions to match
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        resolve(true);
+                    };
+                });
+            }
+
+            // Function to perform real-time detection on each video frame
+            function detectFrame() {
+                // Only run if the model and video are ready
+                if (model && video.readyState === 4) {
+                    model.detect(video).then(predictions => {
+                        // Draw the video frame to the canvas
+                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                        // Draw the predictions (bounding boxes and labels) on the canvas
+                        drawPredictions(predictions);
+                        
+                        // Continue the loop for the next frame
+                        animationFrameId = requestAnimationFrame(detectFrame);
+                    });
+                } else {
+                    // If not ready, just wait for the next frame
+                    animationFrameId = requestAnimationFrame(detectFrame);
+                }
+            }
+            
+            // Function to draw bounding boxes and labels
+            function drawPredictions(predictions) {
+                // Clear the previous predictions
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw the video frame again (important to keep the feed visible)
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Set styling for the bounding boxes and text
+                context.strokeStyle = "#4F46E5"; // indigo-600
+                context.lineWidth = 4;
+                context.fillStyle = "#FFFFFF";
+                context.font = "24px Inter";
+
+                predictions.forEach(prediction => {
+                    // Destructure the prediction object for easier access
+                    const [x, y, width, height] = prediction.bbox;
+                    const className = prediction.class;
+                    const score = Math.round(prediction.score * 100);
+
+                    // Draw the bounding box
+                    context.beginPath();
+                    context.rect(x, y, width, height);
+                    context.stroke();
+
+                    // Draw the label background
+                    const text = `${className} (${score}%)`;
+                    const textMetrics = context.measureText(text);
+                    const textWidth = textMetrics.width;
+                    const textHeight = textMetrics.actualBoundingBoxAscent + textMetrics.actualBoundingBoxDescent;
+                    context.fillStyle = "#4F46E5";
+                    context.fillRect(x, y - textHeight - 8, textWidth + 16, textHeight + 8);
+
+                    // Draw the label text
+                    context.fillStyle = "#FFFFFF";
+                    context.fillText(text, x + 8, y - 4);
+                });
+            }
+            
+            // Event listener for the start button
+            startButton.addEventListener('click', () => {
+                // If the webcam is already running, stop it first
+                if (videoStream) {
+                    stopDetection();
+                }
+                startButton.textContent = "Stop Webcam";
+                startButton.classList.toggle('bg-indigo-500');
+                startButton.classList.toggle('bg-red-500');
+                startDetection();
+            });
+
+            function stopDetection() {
+                if (videoStream) {
+                    videoStream.getTracks().forEach(track => track.stop());
+                    video.srcObject = null;
+                    videoStream = null;
+                }
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+                startButton.textContent = "Start Webcam";
+                startButton.classList.toggle('bg-indigo-500');
+                startButton.classList.toggle('bg-red-500');
+            }
+        })();
+    </script>
+
+</body>
+</html>
