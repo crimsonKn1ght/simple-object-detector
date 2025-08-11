@@ -1,27 +1,25 @@
 # Real-Time Object Detection
 
-A web-based real-time object detection application powered by TensorFlow.js and the Coco-SSD model. Detect objects through your webcam directly in the browser with no server required.
+A web-based real-time object detection application utilizing YOLO model for rock-paper-scissor detection. The trained weights are present as the `game_weights.pt` file.
 
-## Features
+A standalone version is a genreal purpose real-time detector written with TensorFlow.js and the Coco-SSD model. Detect objects through your webcam directly in the browser with no server required.
 
-- 🎥 **Real-time detection** - Live object detection through your webcam
-- 🏷️ **80+ object classes** - Detects people, animals, vehicles, furniture, and more
-- 🎯 **Bounding boxes** - Visual indicators showing detected objects with confidence scores
-- 📱 **Mobile friendly** - Responsive design that works on desktop and mobile devices
-- 🌙 **Dark mode support** - Automatic dark/light theme detection
-- 🚀 **No installation required** - Runs entirely in the browser
 
 ## Demo
 
-Simply open the HTML file in any modern web browser and click "Start Webcam" to begin detecting objects in real-time.
+As for the rock-paper-scissors detector, install the requirements with:
+```bash
+pip install -r requirements.txt
+```
 
-## How It Works
+Then run the `live-time-detector.py` normally:
+```bash
+python live-time-detector.py
+```
 
-The application uses:
-- **TensorFlow.js** - Machine learning library for JavaScript
-- **Coco-SSD** - Pre-trained object detection model
-- **WebRTC** - For accessing the device camera
-- **Canvas API** - For drawing bounding boxes and labels
+[Make sure the env paths are set appropriately, which goes without saying.]
+
+As for the standalone general purpose detector, just paste the open and run it on a modern browser as usual.
 
 ## Supported Objects
 
@@ -33,19 +31,7 @@ The Coco-SSD model can detect 80 different object classes including:
 - Food items (pizza, banana, wine glass, etc.)
 - And many more!
 
-## Browser Requirements
-
-- Modern web browser with WebRTC support (Chrome, Firefox, Safari, Edge)
-- Camera/webcam access
-- JavaScript enabled
-
-## Usage
-
-1. Open `simple-detector.html` in your web browser
-2. Click "Start Webcam" button
-3. Allow camera access when prompted
-4. Watch as objects are detected and highlighted in real-time
-5. Click "Stop Webcam" to end the session
+The other one is self-explanatory, I guess.
 
 ## Privacy
 
@@ -55,26 +41,38 @@ The Coco-SSD model can detect 80 different object classes including:
 
 ## Technical Details
 
+**Rock-Paper-Scissors**
+- **Model**: **YOLO11n** (You Only Look Once v11 - nano variant)
+- **Framework**: **Ultralytics YOLO** (PyTorch backend)
+- **Source**: **Custom-trained weights**
+- Captures frames from webcam using **OpenCV**
+
+
+**Standalone General Model**
 - **Model**: Coco-SSD (Common Objects in Context - Single Shot MultiBox Detector)
 - **Framework**: TensorFlow.js
 - **Styling**: Tailwind CSS
 - **Performance**: Optimized for real-time detection with requestAnimationFrame
 
-## File Structure
+<!-- ## File Structure
 
 ```
 ├── simple-detector.html          # Main application file
 ├── README.md                     # This file
 └── LICENSE
-```
+``` -->
+
+## Dataset
+
+**Dataset:** Rock-Paper-Scissors-SXSW  
+**Publisher:** Roboflow (via Universe)  
+**URL:** https://universe.roboflow.com/roboflow-58fyf/rock-paper-scissors-sxsw/dataset/14  
+**Accessed:** [10-08-2025]
+
 
 ## Contributing
 
-Feel free to fork this project and submit pull requests for improvements such as:
-- Additional model options
-- Performance optimizations
-- UI/UX enhancements
-- Mobile-specific features
+Feel free to fork this project and submit pull requests for improvements.
 
 ## License
 
@@ -93,5 +91,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Try using a device with better processing power
 
 **Model loading slowly?**
-- The Coco-SSD model is ~27MB and loads on first use
-- Subsequent uses will be faster due to browser caching
+- It might take a while to load the model (usually <30 secs), please be patient.
